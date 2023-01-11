@@ -2,13 +2,28 @@
 
 ;; * Imports
 
-(require [hy.extra.anaphoric [*]])
+(require hyrule.hy_init *)
 
 (import functools
-        [toolz.curried :as tz]
+        itertools
+        toolz.curried :as tz
 
-        [hy.lex [unmangle
-                 mangle :as unfixed-mangle]])
+        hy [unmangle
+            mangle :as unfixed-mangle])
+
+
+;; * 1.0a3 workaround
+(defn second [form]
+  (get form 1))
+
+(defn first [form]
+  (when form (get form 0)))
+
+(defn none? [form]
+  (is form None))
+
+(defn string? [form]
+  (isinstance form str))
 
 ;; * Hy Overwrites
 
@@ -16,34 +31,60 @@
 (defn mangle [s]
   (if (!= s "") (unfixed-mangle s) (str)))
 
-;; * Tag Macros
+;; * Tag Macros are gone. replaced with normal macro
 
-(deftag t [form]
-  "Cast evaluated form to a tuple. Useful via eg. #t(-> x f1 f2 ...)."
+(defmacro cast-tuple [form]
+  "Cast evaluated form to a tuple."
   `(tuple ~form))
 
-(deftag $ [form]
+(defmacro partially-apply [form]
   "Partially apply a form eg. (#$(map inc) [1 2 3])."
   `(functools.partial ~@form))
 
-(deftag f [form]
+(defmacro flipped-#$ [form]
   "Flipped #$."
   `(tz.flip ~@form))
 
 ;; * Misc
 
-(defn -allkeys [d &kwonly [parents (,)]]
+(defn -allkeys [d * [parents #()]]
   "In-order tuples of keys of nested, variable-length dict."
-  (if (isinstance d (, list tuple))
+  (if (isinstance d #(list tuple))
       []
-      #t(->> d
-         (tz.keymap (fn [k] (+ parents (, k))))
-         dict.items
-         (*map (fn [k v]
+      (cast-tuple
+        (->> d
+             (tz.keymap (fn [k] (+ parents #(k))))
+             dict.items
+             (itertools.starmap
+               (fn [k v]
                  (if (isinstance v dict)
                      (-allkeys v :parents k)
                      [k])))
-         tz.concat)))
+             tz.concat))))
+
+(defn drop [count coll]
+  "Drop `count` elements from `coll` and yield back the rest."
+  (islice coll count None))
+
+(defn first [coll]
+  "Return first item from `coll`."
+  (next (iter coll) None))
+
+(defn last [coll]
+  "Return last item from `coll`."
+  (get (tuple coll) -1))
 
 (defn allkeys [d]
   (->> d -allkeys (map last) tuple))
+
+(defn juxt [f #* fs]
+  "Return a function applying each `fs` to args, collecting results in a list."
+  (setv fs (+ #(f) fs))
+  (fn [#* args #** kwargs]
+    (lfor f fs (f #* args #** kwargs))))
+
+(setv chain itertools.chain
+      islice itertools.islice
+      reduce functools.reduce
+      remove itertools.filterfalse
+      repeat itertools.repeat)
