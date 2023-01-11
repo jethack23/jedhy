@@ -5,7 +5,7 @@
 (require jedhy.macros *)
 (require hyrule.hy_init *)
 (import jedhy.macros *)
-(import hy [read-str])
+(import hy [read])
 (import builtins
 
         hy
@@ -39,17 +39,16 @@
     ;; Collected
     (setv self.names (self.-collect-names)))
 
-  #@(staticmethod
-      (defn -to-names [key]
-        "Function for converting keys (strs, functions, modules...) to names."
-        (unmangle (if (string? key)
-                      key
-                      key.__name__))))
+  (defn [staticmethod] -to-names [key]
+    "Function for converting keys (strs, functions, modules...) to names."
+    (unmangle (if (string? key)
+                  key
+                  key.__name__)))
 
   (defn -collect-compile-table [self]
     "Collect compile table as dict."
     (->> -compile-table
-       (tz.keymap self.-to-names)))
+         (tz.keymap self.-to-names)))
 
   ;; (defn -collect-shadows [self]
   ;;   "Collect shadows as a list, purely for annotation checks."
@@ -64,7 +63,7 @@
       (chain (allkeys self.globals)
              (allkeys self.locals)
              (.keys self.macros)
-            ;;  (.keys self.compile-table)
+             ;;  (.keys self.compile-table)
              )
       (map self.-to-names)
       distinct
@@ -76,7 +75,7 @@
     (when (not mangled-symbol)
       (return None))
 
-    (setv hy-tree (read-str mangled-symbol))
+    (setv hy-tree (read mangled-symbol))
 
     (try (hy.eval hy-tree :locals self.globals)
          (except [e NameError]
@@ -140,17 +139,16 @@
     (when obj
       (->> obj dir (map unmangle) tuple)))
 
-  #@(staticmethod
-      (defn -translate-class [klass]
-        "Return annotation given a name of a class."
-        (cond [(in klass ["function" "builtin_function_or_method"])
-               "def"]
-              [(= klass "type")
-               "class"]
-              [(= klass "module")
-               "module"]
-              [True
-               "instance"])))
+  (defn [staticmethod] -translate-class [klass]
+    "Return annotation given a name of a class."
+    (cond [(in klass ["function" "builtin_function_or_method"])
+           "def"]
+          [(= klass "type")
+           "class"]
+          [(= klass "module")
+           "module"]
+          [True
+           "instance"]))
 
   (defn annotate [self]
     "Return annotation for a candidate."
@@ -159,16 +157,16 @@
 
     ;; Shadowed takes first priority but compile table takes last priority
     (setv annotation (cond ;; [(self.shadow?)
-                           ;;  "shadowed"]
+                       ;;  "shadowed"]
 
-                           [obj?
-                            (self.-translate-class obj.__class__.__name__)]
+                       [obj?
+                        (self.-translate-class obj.__class__.__name__)]
 
-                          ;;  [(.compiler? self)
-                          ;;   "compiler"]
+                       ;;  [(.compiler? self)
+                       ;;   "compiler"]
 
-                           [(.macro? self)
-                            "macro"]))
+                       [(.macro? self)
+                        "macro"]))
 
     (.format "<{} {}>" annotation self)))
 
@@ -189,31 +187,28 @@
   (defn __repr__ [self]
     (.format "Prefix<(prefix={})>" self.prefix))
 
-  #@(staticmethod
-      (defn -prefix->candidate [prefix namespace]
-        (->> (.split prefix ".")
-             butlast
-             (.join ".")
-             (Candidate :namespace namespace))))
+  (defn [staticmethod] -prefix->candidate [prefix namespace]
+    (->> (.split prefix ".")
+         butlast
+         (.join ".")
+         (Candidate :namespace namespace)))
 
-  #@(staticmethod
-      (defn -prefix->attr-prefix [prefix]
-        "Get prefix as str of everything after last dot if a dot is there."
-        (->> (.split prefix ".")
-           last
-           unmangle
-           ;; TODO since 0.15 below line shouldnt be needed
-           (#%(if (= %1 "_") "-" %1)))))
+  (defn [staticmethod] -prefix->attr-prefix [prefix]
+    "Get prefix as str of everything after last dot if a dot is there."
+    (->> (.split prefix ".")
+         last
+         unmangle
+         ;; TODO since 0.15 below line shouldnt be needed
+         ;; (#%(if (= %1 "_") "-" %1))
+         ))
 
-  #@(property
-      (defn has-attr? [self]
-        "Does prefix reference an attr?"
-        (in "." self.prefix)))
+  (defn [property]  has-attr? [self]
+    "Does prefix reference an attr?"
+    (in "." self.prefix))
 
-  #@(property
-      (defn obj? [self]
-        "Is the prefix's candidate an object?"
-        (bool (.get-obj self.candidate))))
+  (defn [property] obj? [self]
+    "Is the prefix's candidate an object?"
+    (bool (.get-obj self.candidate)))
 
   (defn complete-candidate [self completion]
     "Given a potential string `completion`, attach to candidate."
@@ -237,6 +232,6 @@
                                    self.namespace.names)))
 
     (->> self.completions
-       (filter #f(str.startswith self.attr-prefix))
-       (map self.complete-candidate)
-       tuple)))
+         (filter (flipped-#$ (str.startswith self.attr-prefix)))
+         (map self.complete-candidate)
+         tuple)))

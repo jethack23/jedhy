@@ -8,8 +8,8 @@
         itertools
         toolz.curried :as tz
 
-        hy.lex [unmangle
-                mangle :as unfixed-mangle])
+        hy [unmangle
+            mangle :as unfixed-mangle])
 
 
 ;; * 1.0a3 workaround
@@ -17,7 +17,7 @@
   (get form 1))
 
 (defn first [form]
-  (if form (get form 0)))
+  (when form (get form 0)))
 
 (defn none? [form]
   (is form None))
@@ -31,35 +31,36 @@
 (defn mangle [s]
   (if (!= s "") (unfixed-mangle s) (str)))
 
-;; * Tag Macros
+;; * Tag Macros are gone. replaced with normal macro
 
-(defmacro "#t" [form]
-  "Cast evaluated form to a tuple. Useful via eg. #t(-> x f1 f2 ...)."
+(defmacro cast-tuple [form]
+  "Cast evaluated form to a tuple."
   `(tuple ~form))
 
-(defmacro "#$" [form]
+(defmacro partially-apply [form]
   "Partially apply a form eg. (#$(map inc) [1 2 3])."
   `(functools.partial ~@form))
 
-(defmacro "#f" [form]
+(defmacro flipped-#$ [form]
   "Flipped #$."
   `(tz.flip ~@form))
 
 ;; * Misc
 
-(defn -allkeys [d * [parents (,)]]
+(defn -allkeys [d * [parents #()]]
   "In-order tuples of keys of nested, variable-length dict."
-  (if (isinstance d (, list tuple))
+  (if (isinstance d #(list tuple))
       []
-      #t(->> d
-         (tz.keymap (fn [k] (+ parents (, k))))
-         dict.items
-         (itertools.starmap
-           (fn [k v]
-             (if (isinstance v dict)
-               (-allkeys v :parents k)
-               [k])))
-         tz.concat)))
+      (cast-tuple
+        (->> d
+             (tz.keymap (fn [k] (+ parents #(k))))
+             dict.items
+             (itertools.starmap
+               (fn [k v]
+                 (if (isinstance v dict)
+                     (-allkeys v :parents k)
+                     [k])))
+             tz.concat))))
 
 (defn drop [count coll]
   "Drop `count` elements from `coll` and yield back the rest."
@@ -78,7 +79,7 @@
 
 (defn juxt [f #* fs]
   "Return a function applying each `fs` to args, collecting results in a list."
-  (setv fs (+ (, f) fs))
+  (setv fs (+ #(f) fs))
   (fn [#* args #** kwargs]
     (lfor f fs (f #* args #** kwargs))))
 
