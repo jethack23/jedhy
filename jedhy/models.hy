@@ -21,7 +21,7 @@
 
 ;; See this issue for below #1467: https://github.com/hylang/hy/issues/1467
 (hy.eval `(import hy.macros))
-(hy.eval `(require hyrule.hy_init *))
+(hy.eval `(require hyrule *))
 ;; Overwrite Hy's mangling
 (import jedhy.macros [mangle])
 
@@ -141,14 +141,18 @@
 
   (defn [staticmethod] -translate-class [klass]
     "Return annotation given a name of a class."
-    (cond [(in klass ["function" "builtin_function_or_method"])
-           "def"]
-          [(= klass "type")
-           "class"]
-          [(= klass "module")
-           "module"]
-          [True
-           "instance"]))
+    (cond (in klass ["function" "builtin_function_or_method"])
+          "function"
+          
+          (= klass "type")
+          "class"
+
+          
+          (= klass "module")
+          "module"
+
+          True
+          "instance"))
 
   (defn annotate [self]
     "Return annotation for a candidate."
@@ -156,17 +160,22 @@
     (setv obj? (not (is obj None)))  ; Obj could be instance of bool
 
     ;; Shadowed takes first priority but compile table takes last priority
-    (setv annotation (cond ;; [(self.shadow?)
-                       ;;  "shadowed"]
+    (setv annotation
+          (cond
+            ;; [(self.shadow?)
+            ;;  "shadowed"]
 
-                       [obj?
-                        (self.-translate-class obj.__class__.__name__)]
+            obj?
+            (self.-translate-class obj.__class__.__name__)
 
-                       ;;  [(.compiler? self)
-                       ;;   "compiler"]
+            ;;  [(.compiler? self)
+            ;;   "compiler"]
 
-                       [(.macro? self)
-                        "macro"]))
+            (.macro? self)
+            "macro"
+
+            True
+            "unknown"))
 
     (.format "<{} {}>" annotation self)))
 
