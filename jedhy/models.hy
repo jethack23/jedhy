@@ -20,8 +20,8 @@
 ;; * Fixes
 
 ;; See this issue for below #1467: https://github.com/hylang/hy/issues/1467
-(hy.eval `(import hy.macros))
-(hy.eval `(require hyrule *))
+(hy.eval '(import hy.macros))
+(hy.eval '(require hyrule *))
 ;; Overwrite Hy's mangling
 (import jedhy.macros [mangle])
 

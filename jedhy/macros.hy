@@ -1,4 +1,4 @@
-"Some general purpose imports and code."
+;; "Some general purpose imports and code."
 
 ;; * Imports
 
@@ -54,13 +54,13 @@
       (cast-tuple
         (->> d
              (tz.keymap (fn [k] (+ parents #(k))))
-             dict.items
+             (dict.items)
              (itertools.starmap
                (fn [k v]
                  (if (isinstance v dict)
                      (-allkeys v :parents k)
                      [k])))
-             tz.concat))))
+             (tz.concat)))))
 
 (defn drop [count coll]
   "Drop `count` elements from `coll` and yield back the rest."
